@@ -11,11 +11,11 @@ An LLM-powered natural-language query layer and anomaly detection pipeline built
 - [x] Phase 5: Custom Snowpark anomaly detection — Isolation Forest, trained/scored inside Snowflake compute, real precision/recall against ground truth
 - [x] Phase 6: NL-to-SQL FastAPI backend — schema-aware Claude calls, SQL guardrails, read-only execution, verified live
 - [ ] Phase 7: Cortex Analyst comparison (optional)
-- [ ] Phase 8: Next.js frontend
+- [x] Phase 8: Next.js frontend — query ledger UI, verified live in-browser, responsive
 - [x] Phase 9: Evaluation — 96.7% SQL accuracy (29/30 questions), anomaly precision/recall done in Phase 5
 - [ ] Phase 10: Deploy + final write-up
 
-Snowflake trial account is live (valid through 2026-10-20). Data flows all the way from local generation through `FIN_COPILOT.RAW` -> `STAGING` -> `ANALYTICS` -> `ANALYTICS.FLAGGED_TXNS` (Isolation Forest scores, see `snowflake/README.md` and `docs/anomaly_detection_results.md`). A FastAPI backend (`backend/`) answers natural-language questions over `ANALYTICS` end-to-end, verified live. Frontend is not built yet.
+Snowflake trial account is live (valid through 2026-10-20). Data flows all the way from local generation through `FIN_COPILOT.RAW` -> `STAGING` -> `ANALYTICS` -> `ANALYTICS.FLAGGED_TXNS` (Isolation Forest scores, see `snowflake/README.md` and `docs/anomaly_detection_results.md`). A FastAPI backend (`backend/`) answers natural-language questions over `ANALYTICS` end-to-end, and a Next.js frontend (`frontend/`) makes that queryable through a browser — both verified live. Neither is deployed to the public internet yet (Phase 10).
 
 Live and public on GitHub: https://github.com/tkwazir/financial-copilot — CI green.
 
@@ -60,8 +60,8 @@ Live and public on GitHub: https://github.com/tkwazir/financial-copilot — CI g
                       │
                       ▼
         ┌─────────────────────────┐
-        │  Frontend (Next.js chat  │  <- not yet built
-        │  UI)                     │
+        │  Frontend (Next.js       │  <- live (query ledger UI)
+        │  query ledger UI)        │
         └─────────────────────────┘
 ```
 
@@ -77,9 +77,8 @@ Live and public on GitHub: https://github.com/tkwazir/financial-copilot — CI g
 | `backend/` | FastAPI NL-to-SQL service — Claude calls, SQL guardrails, read-only execution | 6 (done) |
 | `backend/eval/` | 30-question SQL accuracy evaluation, executed + result-set graded | 9 (done) |
 | `tests/` | unit tests for anomaly injection, market data reshaping, and SQL guardrails | 2, 6 (done) |
-| `.github/workflows/ci.yml` | lint + test on push, no live network/API calls (dbt/Snowpark/backend live tests run locally only) | 2 (done) |
-
-No `frontend/` directory yet — deferred to Phase 8.
+| `frontend/` | Next.js query ledger UI — question, generated SQL, validation status, answer | 8 (done) |
+| `.github/workflows/ci.yml` | lint + test on push, no live network/API calls (dbt/Snowpark/backend/frontend live tests run locally only) | 2 (done) |
 
 ## Data Model
 
@@ -173,11 +172,24 @@ python -m backend.eval.run_eval
 # also appends all 30 attempts to backend/query_log.jsonl
 ```
 
+### Frontend
+
+Needs the backend running (previous step) in a separate terminal:
+
+```bash
+cd frontend
+npm install
+cp .env.local.example .env.local
+npm run dev
+# open http://localhost:3000
+```
+
 ### Running tests
 
 ```bash
 pytest tests/
 ruff check data_generation snowflake backend tests
+cd frontend && npm run lint && npm run build
 ```
 
 ## Anomaly Injection Design
@@ -225,6 +237,12 @@ The one failure was investigated, not hand-waved: `DIM_ACCOUNTS` has a column li
 
 > Built an LLM-powered natural language query layer on Snowflake, achieving 96.7% SQL generation accuracy across 30 test questions spanning simple lookups to multi-table joins, with a validation layer enforcing read-only execution and query safety limits.
 
+## Frontend
+
+A Next.js UI (`frontend/`) that makes the backend's pipeline visible rather than hiding it behind a generic chat window: each question is rendered as a **ledger entry** showing the question, the exact SQL that was generated, whether it was validated or blocked (with the reason), row count and timing, and the plain-English answer — in the order the backend actually executes them. Design rationale in `frontend/README.md`.
+
+Verified live in-browser: correct rendering for an accepted multi-table query, a self-declined adversarial prompt, and a guardrail-blocked one (brass "blocked by guardrail" state, forbidden-keyword reason shown); holds at 400px mobile width with no horizontal overflow; visible keyboard focus; clean `npm run build` and `npm run lint`.
+
 ## Budget / Cost Constraints
 
 This project is designed to cost $0. `yfinance` (free, no key) and `Faker` (free, local) have no cost risk. Snowflake is on the free trial (valid through 2026-10-20) — the `FIN_COPILOT_WH` warehouse is pinned to `X-SMALL` with `AUTO_SUSPEND = 60`, verified live after setup. An account-wide **resource monitor** (`snowflake/resource_monitor.sql`, `python -m snowflake.setup_resource_monitor`) caps spend at 350 credits — notifies at 75%/90%, suspends new queries at 100%, hard-kills everything at 110% — as a backstop against the $400 trial credit. Note this caps *compute*; it isn't a guarantee against a card being charged if one is on file and the account converts to paid, so keep an eye on usage too.
@@ -236,7 +254,6 @@ Claude API usage (the one line item with no permanent free tier) is billed separ
 Remaining phases per the project spec, not yet built:
 
 7. (Optional) Cortex Analyst semantic model + build-vs-buy comparison
-8. Next.js chat frontend
 10. Deploy (Vercel + Render/Fly.io) + final README write-up with real metrics
 
 ## License
