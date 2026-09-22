@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    database: "{{ env_var('SNOWFLAKE_DATABASE', 'FIN_COPILOT') }}"
+    schema: RAW
+    tables:
+      - name: fact_market_prices
+      - name: dim_tickers
+      - name: fact_transactions
+      - name: dim_accounts
+      - name: ground_truth_labels

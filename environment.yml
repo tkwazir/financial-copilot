@@ -1,0 +1,20 @@
+name: financial-copilot
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - pandas
+  - numpy
+  - pyarrow
+  - requests
+  - pip
+  - pip:
+      - yfinance
+      - Faker
+      - ruff
+      - pytest
+      - snowflake-connector-python
+      - snowflake-snowpark-python
+      - scikit-learn
+      - python-dotenv
+      - dbt-snowflake

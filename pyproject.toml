@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# Default pycodestyle-error + pyflakes + import-sort rules only.
+# Explicitly not using flake8-bugbear/datetimez: this codebase deliberately
+# catches broad exceptions in the fault-tolerant yfinance wrapper (one bad
+# ticker shouldn't kill the run) and deliberately uses naive datetimes for
+# transaction timestamps to match Snowflake's TIMESTAMP_NTZ column type.
+select = ["E4", "E7", "E9", "F", "I"]

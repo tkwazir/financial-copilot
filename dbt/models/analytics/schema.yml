@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: dim_tickers
+    description: Gold-layer ticker dimension.
+    columns:
+      - name: ticker
+        tests: [not_null, unique]
+
+  - name: fact_market_prices
+    description: Gold-layer daily OHLCV fact table.
+    columns:
+      - name: ticker
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_tickers')
+                field: ticker
+      - name: price_date
+        tests: [not_null]
+
+  - name: dim_accounts
+    description: Gold-layer account dimension.
+    columns:
+      - name: account_id
+        tests: [not_null, unique]
+
+  - name: fact_transactions
+    description: Gold-layer transaction fact table. is_flagged reflects the synthetic ground-truth injection (see RAW.GROUND_TRUTH_LABELS), not a detection model's output yet.
+    columns:
+      - name: transaction_id
+        tests: [not_null, unique]
+      - name: account_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_accounts')
+                field: account_id

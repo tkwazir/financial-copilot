@@ -1,0 +1,27 @@
+# Data outputs (regenerable via data_generation scripts)
+data/**/*.csv
+data/**/*.parquet
+data/**/*.json
+!data/**/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+dbt/.user.yml
+
+# Env / secrets
+.env
+.env.local
+.env.save
+.secrets/
+
+# OS
+.DS_Store
