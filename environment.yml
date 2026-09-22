@@ -18,3 +18,7 @@ dependencies:
       - scikit-learn
       - python-dotenv
       - dbt-snowflake
+      - fastapi
+      - uvicorn
+      - anthropic
+      - sqlparse

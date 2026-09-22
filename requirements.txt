@@ -6,3 +6,4 @@ yfinance==1.7.0
 Faker==40.39.0
 ruff==0.16.8
 pytest==9.1.1
+sqlparse==0.6.0

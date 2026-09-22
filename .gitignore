@@ -23,5 +23,8 @@ dbt/.user.yml
 .env.save
 .secrets/
 
+# Runtime logs
+backend/query_log.jsonl
+
 # OS
 .DS_Store
