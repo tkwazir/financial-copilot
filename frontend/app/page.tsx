@@ -12,11 +12,25 @@ const EXAMPLES = [
   "Which merchant category has the highest total transaction amount?",
 ];
 
+const SUGGESTED_QUESTION = "Compare MSFT vs GOOGL";
+
 export default function Home() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  // Shown only until the visitor's first interaction with the input (typing,
+  // accepting it, or clicking an example chip) or their first question —
+  // never reappears after that, even if the field is cleared again later.
+  const [suggestionAvailable, setSuggestionAvailable] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const showSuggestion = suggestionAvailable && input === "" && entries.length === 0;
+
+  function acceptSuggestion() {
+    if (!showSuggestion) return;
+    setInput(SUGGESTED_QUESTION);
+    setSuggestionAvailable(false);
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -88,13 +102,32 @@ export default function Home() {
             }}
             className="mt-8 flex items-center gap-3 border border-paper/25 bg-navy-deep px-4 py-3 transition-colors focus-within:border-paper/60"
           >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="What was the average close price for AAPL?"
-              className="flex-1 bg-transparent font-sans text-[15px] text-paper placeholder:text-paper/50 focus:outline-none"
-              aria-label="Ask a question about market or transaction data"
-            />
+            <div className="relative flex-1">
+              {showSuggestion && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-y-0 left-0 flex items-center font-sans text-[15px] text-paper/50"
+                >
+                  {SUGGESTED_QUESTION}
+                </span>
+              )}
+              <input
+                value={input}
+                onChange={(e) => {
+                  setSuggestionAvailable(false);
+                  setInput(e.target.value);
+                }}
+                onClick={acceptSuggestion}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight" && showSuggestion) {
+                    e.preventDefault();
+                    acceptSuggestion();
+                  }
+                }}
+                className="relative w-full bg-transparent font-sans text-[15px] text-paper focus:outline-none"
+                aria-label="Ask a question about market or transaction data"
+              />
+            </div>
             <button
               type="submit"
               disabled={pending || !input.trim()}
@@ -110,7 +143,10 @@ export default function Home() {
                 <button
                   key={q}
                   type="button"
-                  onClick={() => setInput(q)}
+                  onClick={() => {
+                    setSuggestionAvailable(false);
+                    setInput(q);
+                  }}
                   className="border border-paper/25 px-2.5 py-1.5 font-sans text-xs text-paper/70 transition-colors hover:border-paper/60 hover:text-paper"
                 >
                   {q}
