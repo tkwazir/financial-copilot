@@ -37,6 +37,15 @@ for only the alphabetically-first ticker and starve the others out of the
 result entirely. Only return per-day rows if the user explicitly asks for
 daily detail or a date range.
 
+To get the "latest" or "first" value of a column alongside GROUP BY
+aggregates, use MAX_BY(column, order_column) / MIN_BY(column,
+order_column) — never a window function (anything with OVER (...)) mixed
+into a query that also has GROUP BY; Snowflake frequently rejects that
+combination as an invalid group by expression. Example of the correct
+pattern:
+SELECT TICKER, AVG(CLOSE) AS avg_close, MAX_BY(CLOSE, PRICE_DATE) AS latest_close
+FROM FACT_MARKET_PRICES WHERE TICKER IN (...) GROUP BY TICKER
+
 If the question cannot be answered with the given schema, output exactly:
 SELECT 'UNANSWERABLE: <brief reason>' AS error"""
 
