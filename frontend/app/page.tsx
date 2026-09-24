@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { LedgerEntry } from "@/components/LedgerEntry";
 import { TickerTape } from "@/components/TickerTape";
 import type { Entry } from "@/lib/entry";
@@ -22,7 +22,6 @@ export default function Home() {
   // accepting it, or clicking an example chip) or their first question —
   // never reappears after that, even if the field is cleared again later.
   const [suggestionAvailable, setSuggestionAvailable] = useState(true);
-  const bottomRef = useRef<HTMLDivElement>(null);
 
   const showSuggestion = suggestionAvailable && input === "" && entries.length === 0;
 
@@ -31,10 +30,6 @@ export default function Home() {
     setInput(SUGGESTED_QUESTION);
     setSuggestionAvailable(false);
   }
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [entries]);
 
   async function ask(question: string) {
     const trimmed = question.trim();
@@ -158,11 +153,16 @@ export default function Home() {
       </section>
 
       <main className="mx-auto w-full max-w-[880px] flex-1 px-6 py-8">
+        {/* Newest first, right below the input — the input lives at the top
+            of the page, so appending newest-last would bury each new answer
+            at the bottom of a growing list, forcing a scroll to see it. */}
         <div className="space-y-3">
-          {entries.map((entry, i) => (
-            <LedgerEntry key={entry.id} entry={entry} index={i} />
-          ))}
-          <div ref={bottomRef} />
+          {entries
+            .map((entry, i) => ({ entry, i }))
+            .reverse()
+            .map(({ entry, i }) => (
+              <LedgerEntry key={entry.id} entry={entry} index={i} />
+            ))}
         </div>
       </main>
     </div>
