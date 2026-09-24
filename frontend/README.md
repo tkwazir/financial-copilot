@@ -17,7 +17,7 @@ Visual language is modeled on institutional quant-finance sites (e.g. voleon.com
 - `app/page.tsx` — the ledger UI (client component): ticker tape, input, example-question chips (shown only before the first question), entry list.
 - `components/LedgerEntry.tsx` — renders one entry's pending/error/done states; detects a single-ticker SQL reference and fetches/renders the price chart.
 - `components/StockChart.tsx` — hand-rolled SVG line chart (no charting library): hover for date/price, period buttons (1W/1M/3M/6M/1Y/ALL, client-side filtering of an already-fetched full history — no extra network call per click).
-- `components/TickerTape.tsx` — continuously-scrolling strip of all 503 S&P 500 tickers (symbol, price, day change, real sparkline), duplicated once for a seamless CSS-animation loop; falls back to a static non-animated scrollable row under `prefers-reduced-motion`.
+- `components/TickerTape.tsx` — continuously-scrolling strip of that day's top 10 gainers (by percent change) out of the full S&P 500 (symbol, price, day change, real sparkline), a fixed "Top N gainers today" label, duplicated list for a seamless CSS-animation loop; falls back to a static non-animated scrollable row under `prefers-reduced-motion`.
 - `app/api/query/route.ts`, `app/api/chart/[ticker]/route.ts`, `app/api/tickers/route.ts` — server-side proxies to the FastAPI backend (keeps `BACKEND_URL` out of the client bundle).
 - `lib/types.ts`, `lib/entry.ts`, `lib/chart.ts` (also has `detectTicker()`, parses `TICKER = 'XXX'` out of generated SQL), `lib/tickers.ts` — shared types.
 

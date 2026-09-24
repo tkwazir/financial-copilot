@@ -245,7 +245,7 @@ A Next.js UI (`frontend/`) that makes the backend's pipeline visible rather than
 
 Two data-visualization features on top of the base pipeline:
 - **Price chart** — any question whose generated SQL references a single ticker (extracted from the SQL itself, not the raw question) renders an interactive chart below the answer: full price history, hover for date/price, period buttons (1W/1M/3M/6M/1Y/ALL — daily-resolution only, since the underlying data has no intraday ticks).
-- **Ticker tape** — a continuously-scrolling strip across the top of the page showing all 503 S&P 500 constituents: symbol, latest close, day change (colored), and a real mini sparkline built from actual recent closes. Respects `prefers-reduced-motion` (renders as a static scrollable row instead of animating).
+- **Ticker tape** — a continuously-scrolling strip across the top of the page showing that day's **top 10 gainers** (by percent change) out of the full S&P 500: symbol, latest close, day change (colored), and a real mini sparkline built from actual recent closes. Respects `prefers-reduced-motion` (renders as a static scrollable row instead of animating).
 
 Both are served by fixed, parameterized, non-LLM-generated backend endpoints (`GET /chart/{ticker}`, `GET /tickers`) — no guardrail layer needed since there's no LLM-generated SQL involved.
 

@@ -94,10 +94,14 @@ def chart(ticker: str) -> ChartResponse:
     return ChartResponse(ticker=ticker_clean, prices=prices)
 
 
+TOP_GAINERS_LIMIT = 10
+
+
 @app.get("/tickers", response_model=TickersResponse)
 def tickers() -> TickersResponse:
-    """Latest close + day change + a short recent-close sparkline for every
-    ticker — powers the scrolling ticker tape. Fixed query, no LLM involved."""
+    """Latest close + day change + a short recent-close sparkline for the
+    day's top gainers by percent change — powers the scrolling ticker tape.
+    Fixed query, no LLM involved."""
     _, rows = db.run_query("""
         WITH ranked AS (
             SELECT TICKER, PRICE_DATE, CLOSE,
@@ -126,7 +130,8 @@ def tickers() -> TickersResponse:
         quotes.append(
             TickerQuote(ticker=ticker, close=latest, change=change, change_pct=change_pct, sparkline=closes)
         )
-    return TickersResponse(quotes=quotes)
+    quotes.sort(key=lambda q: q.change_pct, reverse=True)
+    return TickersResponse(quotes=quotes[:TOP_GAINERS_LIMIT])
 
 
 @app.post("/query", response_model=QueryResponse)

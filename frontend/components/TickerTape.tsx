@@ -74,27 +74,39 @@ export function TickerTape() {
 
   if (quotes.length === 0) return null;
 
+  const label = (
+    <div className="flex shrink-0 items-center border-r border-paper/15 px-4 py-3 font-sans text-xs whitespace-nowrap text-paper/70">
+      Top {quotes.length} gainers today
+    </div>
+  );
+
   if (reducedMotion) {
     return (
-      <div className="overflow-x-auto bg-navy-deep">
-        <div className="flex w-max">
-          {quotes.map((q) => (
-            <QuoteItem key={q.ticker} quote={q} />
-          ))}
+      <div className="flex bg-navy-deep">
+        {label}
+        <div className="overflow-x-auto">
+          <div className="flex w-max">
+            {quotes.map((q) => (
+              <QuoteItem key={q.ticker} quote={q} />
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden bg-navy-deep">
-      <div className="flex w-max animate-[ticker-scroll_60s_linear_infinite]">
-        {quotes.map((q) => (
-          <QuoteItem key={`a-${q.ticker}`} quote={q} />
-        ))}
-        {quotes.map((q) => (
-          <QuoteItem key={`b-${q.ticker}`} quote={q} />
-        ))}
+    <div className="flex bg-navy-deep">
+      {label}
+      <div className="overflow-hidden">
+        <div className="flex w-max animate-[ticker-scroll_60s_linear_infinite]">
+          {quotes.map((q) => (
+            <QuoteItem key={`a-${q.ticker}`} quote={q} />
+          ))}
+          {quotes.map((q) => (
+            <QuoteItem key={`b-${q.ticker}`} quote={q} />
+          ))}
+        </div>
       </div>
     </div>
   );
