@@ -117,7 +117,7 @@ export default function Home() {
                   setSuggestionAvailable(false);
                   setInput(e.target.value);
                 }}
-                onClick={acceptSuggestion}
+                onDoubleClick={acceptSuggestion}
                 onKeyDown={(e) => {
                   if (e.key === "ArrowRight" && showSuggestion) {
                     e.preventDefault();
