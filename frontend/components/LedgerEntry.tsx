@@ -3,36 +3,42 @@
 import { useEffect, useState } from "react";
 import { StockChart } from "@/components/StockChart";
 import type { ChartResponse } from "@/lib/chart";
-import { detectTicker } from "@/lib/chart";
+import { detectTickers } from "@/lib/chart";
 import type { Entry } from "@/lib/entry";
 
 export function LedgerEntry({ entry, index }: { entry: Entry; index: number }) {
   const result = entry.status === "done" ? entry.result : undefined;
 
-  const ticker =
+  const tickers: string[] =
     result?.accepted && result.mode === "news"
       ? result.ticker
+        ? [result.ticker]
+        : []
       : result?.accepted && result.sql
-        ? detectTicker(result.sql)
-        : null;
+        ? detectTickers(result.sql)
+        : [];
 
-  const [chart, setChart] = useState<ChartResponse | null>(null);
+  const [charts, setCharts] = useState<ChartResponse[]>([]);
 
   useEffect(() => {
-    if (!ticker) return;
+    if (tickers.length === 0) return;
     let cancelled = false;
-    fetch(`/api/chart/${ticker}`)
-      .then((res) => res.json())
-      .then((data: ChartResponse) => {
-        if (!cancelled) setChart(data);
-      })
-      .catch(() => {
-        if (!cancelled) setChart(null);
-      });
+    Promise.all(
+      tickers.map((t) =>
+        fetch(`/api/chart/${t}`)
+          .then((res) => res.json() as Promise<ChartResponse>)
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      if (!cancelled) {
+        setCharts(results.filter((r): r is ChartResponse => r !== null && r.prices.length > 0));
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [ticker]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickers.join(",")]);
 
   return (
     <article className="border border-line bg-paper">
@@ -108,8 +114,14 @@ export function LedgerEntry({ entry, index }: { entry: Entry; index: number }) {
               </ul>
             )}
 
-            {ticker && chart && chart.prices.length > 0 && (
-              <StockChart ticker={chart.ticker} series={chart.prices} />
+            {charts.length === 1 && <StockChart ticker={charts[0].ticker} series={charts[0].prices} />}
+
+            {charts.length > 1 && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {charts.map((c) => (
+                  <StockChart key={c.ticker} ticker={c.ticker} series={c.prices} />
+                ))}
+              </div>
             )}
           </div>
         )}

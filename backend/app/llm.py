@@ -30,6 +30,13 @@ Snowflake SQL SELECT statement (optionally starting with WITH) that answers
 the question. No explanation, no markdown code fences, no semicolon, no
 prose before or after the SQL.
 
+When comparing multiple tickers ("compare X and Y", "X vs Y vs Z"), prefer
+one aggregated row per ticker (e.g. average/min/max close, latest close,
+volatility) over raw per-day rows — a flat LIMIT can otherwise return rows
+for only the alphabetically-first ticker and starve the others out of the
+result entirely. Only return per-day rows if the user explicitly asks for
+daily detail or a date range.
+
 If the question cannot be answered with the given schema, output exactly:
 SELECT 'UNANSWERABLE: <brief reason>' AS error"""
 
@@ -85,12 +92,24 @@ def generate_answer(question: str, sql: str, columns: list[str], rows: list[tupl
 
 INTENT_SYSTEM_PROMPT = """Given a user's question about financial markets, decide:
 
-1. Does answering it well require recent news or an explanation of *why* a
-price moved — not just historical price/volume/transaction data that a
-SQL query over a price warehouse could answer?
-2. If yes, what single stock ticker (standard symbol, e.g. AAPL) is the
-question about? If it's about the market broadly with no single company,
-use SPY. If no, leave this blank.
+1. Does answering it well require recent NEWS or an explanation of *why*
+something happened — not just historical price/volume/transaction data
+that a SQL query over a price warehouse could compute directly?
+
+Data questions (NEEDS_NEWS: NO) include: price lookups, comparisons
+between two or more tickers ("compare AAPL and MSFT", "which is doing
+better, X or Y"), aggregates, rankings, trends over a date range — even
+when phrased casually. These stay NO even when multiple companies are
+named, as long as the question is about their price/volume data, not an
+explanation of events.
+
+News questions (NEEDS_NEWS: YES) include: "why is X moving/up/down",
+"what's the latest news on X", "what happened to X today", "why is the
+market up/down".
+
+2. If NEEDS_NEWS is YES, what single stock ticker (standard symbol, e.g.
+AAPL) is the question about? If it's a market-wide question naming no
+specific company, use SPY. If NEEDS_NEWS is NO, leave this blank.
 
 Respond in exactly this format, nothing else:
 NEEDS_NEWS: YES or NO

@@ -185,7 +185,18 @@ def query(req: QueryRequest) -> QueryResponse:
             elapsed_ms=elapsed_ms,
         )
 
-    columns, rows = db.run_query(result.safe_sql)
+    try:
+        columns, rows = db.run_query(result.safe_sql)
+    except Exception as e:  # noqa: BLE001 - a malformed-but-safe generated query must fail gracefully, not 500
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        return QueryResponse(
+            question=req.question,
+            sql=result.safe_sql,
+            accepted=False,
+            rejection_reason=f"generated SQL failed to execute: {e}",
+            elapsed_ms=elapsed_ms,
+        )
+
     answer = llm.generate_answer(req.question, result.safe_sql, columns, rows)
 
     elapsed_ms = int((time.monotonic() - start) * 1000)
