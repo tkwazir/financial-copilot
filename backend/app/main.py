@@ -17,7 +17,7 @@ from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
-from backend.app import db, llm, query_log, validate  # noqa: E402
+from backend.app import db, llm, news, query_log, validate  # noqa: E402
 from backend.app.schema_context import fetch_schema_description  # noqa: E402
 
 _schema_description_cache: str | None = None
@@ -37,13 +37,23 @@ class QueryRequest(BaseModel):
     question: str
 
 
+class NewsSource(BaseModel):
+    title: str
+    publisher: str
+    url: str
+    pub_date: str
+
+
 class QueryResponse(BaseModel):
     question: str
-    sql: str
+    mode: str = "data"  # "data" (NL-to-SQL) or "news" (real-headline RAG)
+    sql: str | None = None
     accepted: bool
     rejection_reason: str | None = None
     answer: str | None = None
     row_count: int | None = None
+    ticker: str | None = None
+    sources: list[NewsSource] | None = None
     elapsed_ms: int
 
 
@@ -137,6 +147,27 @@ def tickers() -> TickersResponse:
 @app.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest) -> QueryResponse:
     start = time.monotonic()
+
+    intent = llm.classify_intent(req.question)
+    if intent.needs_news:
+        ticker = intent.ticker or "SPY"
+        articles = news.fetch_news(ticker)
+        answer = llm.generate_news_answer(req.question, ticker, articles)
+        query_log.log_query(req.question, f"(news mode, ticker={ticker})", True, None, None)
+        elapsed_ms = int((time.monotonic() - start) * 1000)
+        return QueryResponse(
+            question=req.question,
+            mode="news",
+            accepted=True,
+            answer=answer,
+            ticker=ticker,
+            sources=[
+                NewsSource(title=a["title"], publisher=a["publisher"], url=a["url"], pub_date=a["pub_date"])
+                for a in articles
+            ],
+            elapsed_ms=elapsed_ms,
+        )
+
     schema_description = _schema_description_cache or fetch_schema_description()
 
     generated_sql = llm.generate_sql(req.question, schema_description)

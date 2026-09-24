@@ -6,6 +6,8 @@ short prompts where possible" (section 1a) to keep LLM spend near-zero.
 """
 
 import os
+import re
+from typing import NamedTuple
 
 import anthropic
 
@@ -76,6 +78,67 @@ def generate_answer(question: str, sql: str, columns: list[str], rows: list[tupl
         model=MODEL,
         max_tokens=400,
         system=ANSWER_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_content}],
+    )
+    return next((b.text for b in message.content if b.type == "text"), "").strip()
+
+
+INTENT_SYSTEM_PROMPT = """Given a user's question about financial markets, decide:
+
+1. Does answering it well require recent news or an explanation of *why* a
+price moved — not just historical price/volume/transaction data that a
+SQL query over a price warehouse could answer?
+2. If yes, what single stock ticker (standard symbol, e.g. AAPL) is the
+question about? If it's about the market broadly with no single company,
+use SPY. If no, leave this blank.
+
+Respond in exactly this format, nothing else:
+NEEDS_NEWS: YES or NO
+TICKER: <TICKER or NONE>"""
+
+
+class Intent(NamedTuple):
+    needs_news: bool
+    ticker: str | None
+
+
+def classify_intent(question: str) -> Intent:
+    client = _get_client()
+    message = client.messages.create(
+        model=MODEL,
+        max_tokens=20,
+        system=INTENT_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": question}],
+    )
+    text = next((b.text for b in message.content if b.type == "text"), "").upper()
+    needs_news = "NEEDS_NEWS: YES" in text
+    match = re.search(r"TICKER:\s*([A-Z.\-]+)", text)
+    ticker = match.group(1) if match else None
+    if ticker == "NONE":
+        ticker = None
+    return Intent(needs_news=needs_news, ticker=ticker)
+
+
+NEWS_ANSWER_SYSTEM_PROMPT = """You answer questions about why a stock or the
+market is moving, using ONLY the real news headlines provided below — never
+your own general knowledge or training data about this company or event.
+Be concise (2-4 sentences). Cite which headline(s) support your answer by
+naming the publisher. If none of the provided headlines are relevant to the
+question, say plainly that no relevant recent news was found — do not guess
+or fabricate a reason."""
+
+
+def generate_news_answer(question: str, ticker: str, articles: list[dict]) -> str:
+    client = _get_client()
+    if not articles:
+        articles_text = "(no recent articles available)"
+    else:
+        articles_text = "\n".join(f'- "{a["title"]}" ({a["publisher"]}, {a["pub_date"]})' for a in articles)
+    user_content = f"Question: {question}\n\nTicker: {ticker}\n\nRecent headlines:\n{articles_text}"
+    message = client.messages.create(
+        model=MODEL,
+        max_tokens=400,
+        system=NEWS_ANSWER_SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_content}],
     )
     return next((b.text for b in message.content if b.type == "text"), "").strip()

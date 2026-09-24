@@ -7,8 +7,14 @@ import { detectTicker } from "@/lib/chart";
 import type { Entry } from "@/lib/entry";
 
 export function LedgerEntry({ entry, index }: { entry: Entry; index: number }) {
+  const result = entry.status === "done" ? entry.result : undefined;
+
   const ticker =
-    entry.status === "done" && entry.result?.accepted ? detectTicker(entry.result.sql) : null;
+    result?.accepted && result.mode === "news"
+      ? result.ticker
+      : result?.accepted && result.sql
+        ? detectTicker(result.sql)
+        : null;
 
   const [chart, setChart] = useState<ChartResponse | null>(null);
 
@@ -46,35 +52,60 @@ export function LedgerEntry({ entry, index }: { entry: Entry; index: number }) {
           <p className="font-sans text-sm text-blocked">{entry.errorMessage}</p>
         )}
 
-        {entry.status === "done" && entry.result && (
+        {result && (
           <div className="space-y-3">
-            <pre className="overflow-x-auto border border-line bg-panel px-4 py-3 font-mono text-[13px] leading-relaxed text-ink">
-              {entry.result.sql}
-            </pre>
+            {result.mode === "news" ? (
+              <span className="inline-block border border-navy bg-navy px-2 py-0.5 font-sans text-xs text-paper">
+                sourced from live news
+              </span>
+            ) : (
+              <>
+                <pre className="overflow-x-auto border border-line bg-panel px-4 py-3 font-mono text-[13px] leading-relaxed text-ink">
+                  {result.sql}
+                </pre>
 
-            <div className="flex flex-wrap items-center gap-2 font-sans text-xs">
-              {entry.result.accepted ? (
-                <span className="border border-navy bg-navy px-2 py-0.5 text-paper">
-                  validated · read-only
-                </span>
-              ) : (
-                <span className="border border-blocked px-2 py-0.5 text-blocked">
-                  blocked by guardrail
-                </span>
-              )}
-              {entry.result.accepted && (
-                <span className="text-muted">
-                  {entry.result.row_count} row{entry.result.row_count === 1 ? "" : "s"} ·{" "}
-                  {entry.result.elapsed_ms}ms
-                </span>
-              )}
-              {!entry.result.accepted && entry.result.rejection_reason && (
-                <span className="text-muted">{entry.result.rejection_reason}</span>
-              )}
-            </div>
+                <div className="flex flex-wrap items-center gap-2 font-sans text-xs">
+                  {result.accepted ? (
+                    <span className="border border-navy bg-navy px-2 py-0.5 text-paper">
+                      validated · read-only
+                    </span>
+                  ) : (
+                    <span className="border border-blocked px-2 py-0.5 text-blocked">
+                      blocked by guardrail
+                    </span>
+                  )}
+                  {result.accepted && (
+                    <span className="text-muted">
+                      {result.row_count} row{result.row_count === 1 ? "" : "s"} · {result.elapsed_ms}ms
+                    </span>
+                  )}
+                  {!result.accepted && result.rejection_reason && (
+                    <span className="text-muted">{result.rejection_reason}</span>
+                  )}
+                </div>
+              </>
+            )}
 
-            {entry.result.answer && (
-              <p className="font-sans text-[15px] leading-relaxed text-ink">{entry.result.answer}</p>
+            {result.answer && (
+              <p className="font-sans text-[15px] leading-relaxed text-ink">{result.answer}</p>
+            )}
+
+            {result.mode === "news" && result.sources && result.sources.length > 0 && (
+              <ul className="space-y-1.5 border-t border-line pt-3">
+                {result.sources.map((s) => (
+                  <li key={s.url} className="font-sans text-xs">
+                    <a
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-ink underline decoration-line underline-offset-2 hover:text-navy"
+                    >
+                      {s.title}
+                    </a>
+                    <span className="text-muted"> — {s.publisher}</span>
+                  </li>
+                ))}
+              </ul>
             )}
 
             {ticker && chart && chart.prices.length > 0 && (
