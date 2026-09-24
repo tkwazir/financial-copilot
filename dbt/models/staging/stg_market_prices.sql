@@ -18,6 +18,10 @@ deduped as (
     from source
     where ticker is not null
       and price_date is not null
+      -- yfinance occasionally returns a placeholder row with all-null OHLCV
+      -- and zero volume (observed once in 250k+ rows, e.g. an unsettled
+      -- current-day row) — drop rather than propagate a null close downstream.
+      and close is not null
 )
 
 select

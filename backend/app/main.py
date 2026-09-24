@@ -6,6 +6,7 @@ Claude call turning rows into a plain-English answer. Every generated query
 is logged with its accept/reject outcome regardless of what happens next.
 """
 
+import re
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -46,9 +47,86 @@ class QueryResponse(BaseModel):
     elapsed_ms: int
 
 
+TICKER_PATTERN = re.compile(r"^[A-Z.]{1,10}$")
+
+
+class PricePoint(BaseModel):
+    date: str
+    close: float
+
+
+class ChartResponse(BaseModel):
+    ticker: str
+    prices: list[PricePoint]
+
+
+class TickerQuote(BaseModel):
+    ticker: str
+    close: float
+    change: float
+    change_pct: float
+    sparkline: list[float]
+
+
+class TickersResponse(BaseModel):
+    quotes: list[TickerQuote]
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/chart/{ticker}", response_model=ChartResponse)
+def chart(ticker: str) -> ChartResponse:
+    """Full daily-close price history for one ticker — a fixed, parameterized,
+    non-LLM-generated query (no guardrail layer needed), used by the frontend
+    to render an interactive price chart alongside the NL answer."""
+    ticker_clean = ticker.strip().upper()
+    if not TICKER_PATTERN.match(ticker_clean):
+        return ChartResponse(ticker=ticker_clean, prices=[])
+
+    _, rows = db.run_query(
+        "SELECT PRICE_DATE, CLOSE FROM FACT_MARKET_PRICES WHERE TICKER = %s ORDER BY PRICE_DATE",
+        (ticker_clean,),
+    )
+    prices = [PricePoint(date=str(r[0]), close=float(r[1])) for r in rows]
+    return ChartResponse(ticker=ticker_clean, prices=prices)
+
+
+@app.get("/tickers", response_model=TickersResponse)
+def tickers() -> TickersResponse:
+    """Latest close + day change + a short recent-close sparkline for every
+    ticker — powers the scrolling ticker tape. Fixed query, no LLM involved."""
+    _, rows = db.run_query("""
+        WITH ranked AS (
+            SELECT TICKER, PRICE_DATE, CLOSE,
+                   ROW_NUMBER() OVER (PARTITION BY TICKER ORDER BY PRICE_DATE DESC) AS rn
+            FROM FACT_MARKET_PRICES
+            WHERE CLOSE IS NOT NULL
+        )
+        SELECT TICKER, PRICE_DATE, CLOSE
+        FROM ranked
+        WHERE rn <= 20
+        ORDER BY TICKER, PRICE_DATE
+    """)
+
+    by_ticker: dict[str, list[float]] = {}
+    for ticker, _price_date, close in rows:
+        by_ticker.setdefault(ticker, []).append(float(close))
+
+    quotes = []
+    for ticker in sorted(by_ticker):
+        closes = by_ticker[ticker]
+        if len(closes) < 2:
+            continue
+        latest, prev = closes[-1], closes[-2]
+        change = latest - prev
+        change_pct = (change / prev * 100) if prev else 0.0
+        quotes.append(
+            TickerQuote(ticker=ticker, close=latest, change=change, change_pct=change_pct, sparkline=closes)
+        )
+    return TickersResponse(quotes=quotes)
 
 
 @app.post("/query", response_model=QueryResponse)

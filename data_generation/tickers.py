@@ -1,49 +1,44 @@
-"""Static ticker universe seeding DIM_TICKERS.
+"""Ticker universe seeding DIM_TICKERS: the full S&P 500.
 
-Kept static (not pulled from yfinance's `.info`) because that endpoint is
-flaky/rate-limited; `.history()` (used for OHLCV) is the reliable one.
+Loaded from a committed CSV snapshot (`sp500_constituents.csv`), not fetched
+live at run time — keeps the generation script network-independent and
+reproducible, and avoids re-hitting Wikipedia on every run. The snapshot was
+built once from the live "List of S&P 500 companies" Wikipedia table via
+`refresh_sp500_constituents()` below; re-run that function to update it.
+
+Dotted symbols (e.g. `BRK.B`) are rewritten to yfinance's dash convention
+(`BRK-B`) in the CSV already.
 """
 
-DEFAULT_TICKERS: list[dict] = [
-    # Technology
-    {"ticker": "AAPL", "company_name": "Apple Inc.", "sector": "Technology"},
-    {"ticker": "MSFT", "company_name": "Microsoft Corp.", "sector": "Technology"},
-    {"ticker": "GOOGL", "company_name": "Alphabet Inc.", "sector": "Technology"},
-    {"ticker": "NVDA", "company_name": "NVIDIA Corp.", "sector": "Technology"},
-    {"ticker": "META", "company_name": "Meta Platforms Inc.", "sector": "Technology"},
-    {"ticker": "CRM", "company_name": "Salesforce Inc.", "sector": "Technology"},
-    {"ticker": "ORCL", "company_name": "Oracle Corp.", "sector": "Technology"},
-    {"ticker": "ADBE", "company_name": "Adobe Inc.", "sector": "Technology"},
-    # Financials
-    {"ticker": "JPM", "company_name": "JPMorgan Chase & Co.", "sector": "Financials"},
-    {"ticker": "BAC", "company_name": "Bank of America Corp.", "sector": "Financials"},
-    {"ticker": "GS", "company_name": "Goldman Sachs Group Inc.", "sector": "Financials"},
-    {"ticker": "V", "company_name": "Visa Inc.", "sector": "Financials"},
-    {"ticker": "MA", "company_name": "Mastercard Inc.", "sector": "Financials"},
-    # Healthcare
-    {"ticker": "JNJ", "company_name": "Johnson & Johnson", "sector": "Healthcare"},
-    {"ticker": "UNH", "company_name": "UnitedHealth Group Inc.", "sector": "Healthcare"},
-    {"ticker": "PFE", "company_name": "Pfizer Inc.", "sector": "Healthcare"},
-    {"ticker": "ABBV", "company_name": "AbbVie Inc.", "sector": "Healthcare"},
-    # Energy
-    {"ticker": "XOM", "company_name": "Exxon Mobil Corp.", "sector": "Energy"},
-    {"ticker": "CVX", "company_name": "Chevron Corp.", "sector": "Energy"},
-    {"ticker": "COP", "company_name": "ConocoPhillips", "sector": "Energy"},
-    # Consumer
-    {"ticker": "AMZN", "company_name": "Amazon.com Inc.", "sector": "Consumer"},
-    {"ticker": "WMT", "company_name": "Walmart Inc.", "sector": "Consumer"},
-    {"ticker": "COST", "company_name": "Costco Wholesale Corp.", "sector": "Consumer"},
-    {"ticker": "MCD", "company_name": "McDonald's Corp.", "sector": "Consumer"},
-    {"ticker": "NKE", "company_name": "Nike Inc.", "sector": "Consumer"},
-    {"ticker": "SBUX", "company_name": "Starbucks Corp.", "sector": "Consumer"},
-    # Industrials
-    {"ticker": "BA", "company_name": "Boeing Co.", "sector": "Industrials"},
-    {"ticker": "CAT", "company_name": "Caterpillar Inc.", "sector": "Industrials"},
-    {"ticker": "UPS", "company_name": "United Parcel Service Inc.", "sector": "Industrials"},
-    # Communication
-    {"ticker": "DIS", "company_name": "Walt Disney Co.", "sector": "Communication Services"},
-]
+import csv
+from pathlib import Path
+
+CONSTITUENTS_CSV = Path(__file__).resolve().parent / "sp500_constituents.csv"
 
 
 def get_ticker_universe() -> list[dict]:
-    return DEFAULT_TICKERS
+    with open(CONSTITUENTS_CSV, newline="") as f:
+        return list(csv.DictReader(f))
+
+
+def refresh_sp500_constituents(out_path: Path = CONSTITUENTS_CSV) -> int:
+    """Re-fetches the live S&P 500 constituent list from Wikipedia and
+    overwrites the CSV snapshot. Not called automatically — run manually
+    (`python -c "from data_generation.tickers import refresh_sp500_constituents as r; r()"`)
+    when the index membership needs updating. Returns the row count."""
+    from io import StringIO
+
+    import pandas as pd
+    import requests
+
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
+    headers = {"User-Agent": "Mozilla/5.0 (financial-copilot-portfolio-project; research use)"}
+    resp = requests.get(url, headers=headers, timeout=15)
+    resp.raise_for_status()
+
+    df = pd.read_html(StringIO(resp.text))[0][["Symbol", "Security", "GICS Sector"]].copy()
+    df.columns = ["ticker", "company_name", "sector"]
+    df["ticker"] = df["ticker"].str.replace(".", "-", regex=False)
+    df = df.sort_values("ticker").reset_index(drop=True)
+    df.to_csv(out_path, index=False)
+    return len(df)

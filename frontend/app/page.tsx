@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { LedgerEntry } from "@/components/LedgerEntry";
+import { TickerTape } from "@/components/TickerTape";
 import type { Entry } from "@/lib/entry";
 import type { QueryResponse } from "@/lib/types";
 
@@ -62,67 +63,72 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line">
-        <div className="mx-auto max-w-[760px] px-6 py-10">
-          <h1 className="text-2xl font-medium text-paper">Financial Copilot</h1>
-          <p className="mt-2 max-w-[60ch] text-muted">
-            Ask about market prices or transaction activity in plain English. Every answer traces
-            back to the exact SQL that ran against a read-only Snowflake warehouse.
-          </p>
+      <TickerTape />
+      <header className="border-b border-line bg-paper">
+        <div className="mx-auto flex max-w-[880px] items-baseline justify-between px-6 py-5">
+          <div>
+            <div className="font-serif text-lg text-ink">Financial Copilot</div>
+            <div className="mt-1.5 h-px w-10 bg-navy" />
+          </div>
+          <span className="font-sans text-xs text-muted">Snowflake · Claude</span>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[760px] flex-1 px-6 py-8">
-        {entries.length === 0 && (
-          <div className="mb-8 flex flex-wrap gap-2">
-            {EXAMPLES.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => setInput(q)}
-                className="rounded border border-line px-2.5 py-1.5 font-mono text-xs text-muted transition-colors hover:border-brass hover:text-paper"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
+      <section className="on-navy bg-navy text-paper">
+        <div className="mx-auto max-w-[880px] px-6 py-14">
+          <p className="max-w-[42ch] font-serif text-[26px] leading-snug">
+            Ask about market prices or transaction activity in plain English. Every answer traces
+            back to the exact SQL that ran against a read-only Snowflake warehouse.
+          </p>
 
-        <div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              ask(input);
+            }}
+            className="mt-8 flex items-center gap-3 border border-paper/25 bg-navy-deep px-4 py-3 transition-colors focus-within:border-paper/60"
+          >
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="What was the average close price for AAPL?"
+              className="flex-1 bg-transparent font-sans text-[15px] text-paper placeholder:text-paper/50 focus:outline-none"
+              aria-label="Ask a question about market or transaction data"
+            />
+            <button
+              type="submit"
+              disabled={pending || !input.trim()}
+              className="font-sans text-sm text-paper/70 transition-colors hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {pending ? "asking…" : "ask"}
+            </button>
+          </form>
+
+          {entries.length === 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {EXAMPLES.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setInput(q)}
+                  className="border border-paper/25 px-2.5 py-1.5 font-sans text-xs text-paper/70 transition-colors hover:border-paper/60 hover:text-paper"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <main className="mx-auto w-full max-w-[880px] flex-1 px-6 py-8">
+        <div className="space-y-3">
           {entries.map((entry, i) => (
             <LedgerEntry key={entry.id} entry={entry} index={i} />
           ))}
           <div ref={bottomRef} />
         </div>
       </main>
-
-      <div className="sticky bottom-0 border-t border-line bg-ink/95 backdrop-blur">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            ask(input);
-          }}
-          className="mx-auto flex max-w-[760px] items-center gap-3 px-6 py-4"
-        >
-          <span className="select-none font-mono text-brass" aria-hidden>
-            &gt;
-          </span>
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="What was the average close price for AAPL?"
-            className="flex-1 bg-transparent text-[15px] text-paper placeholder:text-muted focus:outline-none"
-            aria-label="Ask a question about market or transaction data"
-          />
-          <button
-            type="submit"
-            disabled={pending || !input.trim()}
-            className="font-mono text-sm text-muted transition-colors hover:text-paper disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {pending ? "asking…" : "ask"}
-          </button>
-        </form>
-      </div>
     </div>
   );
 }

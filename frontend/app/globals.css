@@ -1,18 +1,20 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #12151c;
-  --color-panel: #1a1e27;
-  --color-panel-raised: #20242f;
-  --color-line: #2a2f3b;
-  --color-paper: #ede9de;
-  --color-muted: #838b9c;
-  --color-verified: #5fa88f;
-  --color-brass: #c99a4e;
-  --color-danger: #c9614e;
+  --color-navy: #243a54;
+  --color-navy-deep: #1a2a3d;
+  --color-paper: #ffffff;
+  --color-panel: #f2f1ed;
+  --color-line: #dad8d2;
+  --color-ink: #1c1c1c;
+  --color-muted: #6b6f76;
+  --color-verified: #243a54;
+  --color-blocked: #8b4332;
+  --color-gain: #3a7d5c;
 
-  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-sans: var(--font-source-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-source-code), ui-monospace, monospace;
 }
 
 * {
@@ -20,25 +22,39 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  background: var(--color-ink);
-  color: var(--color-paper);
+  background: var(--color-paper);
+  color: var(--color-ink);
   margin: 0;
   -webkit-font-smoothing: antialiased;
 }
 
 ::selection {
-  background: var(--color-brass);
-  color: var(--color-ink);
+  background: var(--color-navy);
+  color: var(--color-paper);
 }
 
 /* Visible keyboard focus everywhere, no exceptions */
 :focus-visible {
-  outline: 2px solid var(--color-brass);
+  outline: 2px solid var(--color-navy);
   outline-offset: 2px;
+}
+
+/* On the navy hero band, a navy outline is invisible — swap it for paper */
+.on-navy :focus-visible {
+  outline-color: var(--color-paper);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

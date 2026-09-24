@@ -24,7 +24,9 @@ Maps the columns produced by `data_generation/` to the Snowflake RAW/ANALYTICS t
 |---|---|---|
 | `ticker` | VARCHAR | PK |
 | `company_name` | VARCHAR | |
-| `sector` | VARCHAR | |
+| `sector` | VARCHAR | GICS sector |
+
+Full S&P 500 (503 rows, including dual-class shares). Sourced from a committed snapshot (`data_generation/sp500_constituents.csv`) of Wikipedia's live constituent table — see `data_generation/tickers.py`.
 
 ## Transaction data (`data/transactions/`)
 

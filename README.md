@@ -95,6 +95,8 @@ conda activate financial-copilot
 
 ### Generate market data
 
+Covers the full S&P 500 (503 tickers, including dual-class shares) by default — 2 years of daily OHLCV each, ~250k rows. Ticker/company/sector reference data comes from `data_generation/sp500_constituents.csv`, a committed snapshot of Wikipedia's live constituent table (dotted symbols like `BRK.B` already rewritten to yfinance's `BRK-B` convention); re-run `data_generation.tickers.refresh_sp500_constituents()` to pull a fresh snapshot when index membership changes.
+
 ```bash
 python -m data_generation.generate_market_data
 # outputs: data/market/fact_market_prices.csv, dim_tickers.csv, _run_manifest.json
@@ -239,9 +241,15 @@ The one failure was investigated, not hand-waved: `DIM_ACCOUNTS` has a column li
 
 ## Frontend
 
-A Next.js UI (`frontend/`) that makes the backend's pipeline visible rather than hiding it behind a generic chat window: each question is rendered as a **ledger entry** showing the question, the exact SQL that was generated, whether it was validated or blocked (with the reason), row count and timing, and the plain-English answer — in the order the backend actually executes them. Design rationale in `frontend/README.md`.
+A Next.js UI (`frontend/`) that makes the backend's pipeline visible rather than hiding it behind a generic chat window: each question is rendered as a **ledger entry** showing the question, the exact SQL that was generated, whether it was validated or blocked (with the reason), row count and timing, and the plain-English answer — in the order the backend actually executes them. Visual design deliberately modeled on institutional quant-finance sites (navy/white, serif headers, sharp corners, hairline borders, no shadows or gradients) rather than a generic chat-bubble SaaS look. Design rationale in `frontend/README.md`.
 
-Verified live in-browser: correct rendering for an accepted multi-table query, a self-declined adversarial prompt, and a guardrail-blocked one (brass "blocked by guardrail" state, forbidden-keyword reason shown); holds at 400px mobile width with no horizontal overflow; visible keyboard focus; clean `npm run build` and `npm run lint`.
+Two data-visualization features on top of the base pipeline:
+- **Price chart** — any question whose generated SQL references a single ticker (extracted from the SQL itself, not the raw question) renders an interactive chart below the answer: full price history, hover for date/price, period buttons (1W/1M/3M/6M/1Y/ALL — daily-resolution only, since the underlying data has no intraday ticks).
+- **Ticker tape** — a continuously-scrolling strip across the top of the page showing all 503 S&P 500 constituents: symbol, latest close, day change (colored), and a real mini sparkline built from actual recent closes. Respects `prefers-reduced-motion` (renders as a static scrollable row instead of animating).
+
+Both are served by fixed, parameterized, non-LLM-generated backend endpoints (`GET /chart/{ticker}`, `GET /tickers`) — no guardrail layer needed since there's no LLM-generated SQL involved.
+
+Verified live in-browser and via curl: correct rendering for accepted multi-table queries, a self-declined adversarial prompt, and a guardrail-blocked one; holds at 400px mobile width with no horizontal overflow; visible keyboard focus; clean `npm run build` and `npm run lint`.
 
 ## Budget / Cost Constraints
 

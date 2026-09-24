@@ -10,7 +10,7 @@ from snowflake.conn import get_connection
 QUERY_TIMEOUT_SECONDS = 30
 
 
-def run_query(sql: str) -> tuple[list[str], list[tuple]]:
+def run_query(sql: str, params: tuple | None = None) -> tuple[list[str], list[tuple]]:
     conn = get_connection(
         role="COPILOT_APP_ROLE",
         warehouse="FIN_COPILOT_WH",
@@ -20,7 +20,7 @@ def run_query(sql: str) -> tuple[list[str], list[tuple]]:
     cur = conn.cursor()
     try:
         cur.execute(f"ALTER SESSION SET STATEMENT_TIMEOUT_IN_SECONDS = {QUERY_TIMEOUT_SECONDS}")
-        cur.execute(sql)
+        cur.execute(sql, params)
         columns = [d[0] for d in cur.description]
         rows = cur.fetchall()
         return columns, rows
